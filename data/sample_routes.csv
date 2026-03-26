@@ -1,0 +1,4 @@
+route_name,time_min,distance_km,fuel_cost_baht,traffic_status
+เส้นทาง A,15,8.2,18,จราจรดี
+เส้นทาง B,13,9.5,22,เร็วที่สุด
+เส้นทาง C,17,7.8,15,ประหยัดที่สุด
