@@ -16,8 +16,13 @@ def get_css() -> str:
     }
 
     html, body, [class*="css"] {
-        font-family: "Segoe UI", sans-serif;
+        font-family: Tahoma, "Noto Sans Thai", "Segoe UI", sans-serif;
         color: var(--text);
+        line-height: 1.5;
+    }
+
+    p, label, span, div {
+        letter-spacing: 0.01em;
     }
 
     .hero-box {
@@ -31,14 +36,17 @@ def get_css() -> str:
 
     .hero-title {
         font-size: 42px;
-        font-weight: 800;
+        font-weight: 700;
         color: #8B5E3C;
         margin-bottom: 8px;
+        line-height: 1.2;
     }
 
     .hero-subtitle {
-        font-size: 18px;
+        font-size: 19px;
+        font-weight: 600;
         color: #5C4A3D;
+        line-height: 1.5;
     }
 
     .main-result {
@@ -52,17 +60,18 @@ def get_css() -> str:
     }
 
     .main-result-title {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 700;
         color: var(--accent-dark);
         margin-bottom: 8px;
     }
 
     .main-result-metric {
-        font-size: 28px;
-        font-weight: 800;
+        font-size: 30px;
+        font-weight: 700;
         color: var(--accent-dark);
         margin-bottom: 10px;
+        line-height: 1.25;
     }
 
     .result-pill {
@@ -79,8 +88,20 @@ def get_css() -> str:
 
     .small-note {
         color: var(--subtext);
-        font-size: 14px;
+        font-size: 15px;
+        font-weight: 500;
         margin-top: 10px;
+    }
+
+    div[data-testid="stSelectbox"] label,
+    div[data-testid="stButton"] button p {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    div[data-baseweb="select"] span {
+        font-size: 17px;
+        font-weight: 600;
     }
 
     div[data-testid="stTextInput"] input {
@@ -97,6 +118,7 @@ def get_css() -> str:
         border-radius: 12px;
         font-weight: 700;
         padding: 0.65rem 1rem;
+        font-size: 17px;
     }
 
     div[data-testid="stButton"] button:hover {
