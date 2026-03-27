@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 import requests
@@ -14,7 +14,7 @@ def load_places() -> pd.DataFrame:
     return pd.read_csv("data/nakhonsawan_places.csv", encoding="utf-8-sig")
 
 
-def get_place_coords(df: pd.DataFrame, place_name: str) -> tuple[float, float]:
+def get_place_coords(df: pd.DataFrame, place_name: str) -> Tuple[float, float]:
     row = df[df["name"] == place_name].iloc[0]
     return float(row["lat"]), float(row["lon"])
 
@@ -34,10 +34,10 @@ def _route_payload(
     end_lon: float,
     *,
     preference: str = "recommended",
-    alternative_routes: dict[str, Any] | None = None,
-    avoid_features: list[str] | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
+    alternative_routes: Optional[Dict[str, Any]] = None,
+    avoid_features: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
         "coordinates": [
             [start_lon, start_lat],
             [end_lon, end_lat],
@@ -56,7 +56,7 @@ def _route_payload(
     return payload
 
 
-def _call_ors(payload: dict[str, Any]) -> dict[str, Any]:
+def _call_ors(payload: Dict[str, Any]) -> Dict[str, Any]:
     api_key = st.secrets["ORS_API_KEY"]
     headers = {
         "Authorization": api_key,
@@ -75,8 +75,8 @@ def _call_ors(payload: dict[str, Any]) -> dict[str, Any]:
     return response.json()
 
 
-def _decode_polyline(encoded: str) -> list[list[float]]:
-    coordinates: list[list[float]] = []
+def _decode_polyline(encoded: str) -> List[List[float]]:
+    coordinates: List[List[float]] = []
     index = 0
     lat = 0
     lon = 0
@@ -109,11 +109,11 @@ def _decode_polyline(encoded: str) -> list[list[float]]:
     return coordinates
 
 
-def _extract_route_features(data: dict[str, Any]) -> list[dict[str, Any]]:
+def _extract_route_features(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     if data.get("features"):
         return data["features"]
 
-    features: list[dict[str, Any]] = []
+    features: List[Dict[str, Any]] = []
     for route in data.get("routes", []):
         geometry = route.get("geometry")
         if isinstance(geometry, str):
@@ -135,7 +135,7 @@ def _extract_route_features(data: dict[str, Any]) -> list[dict[str, Any]]:
     return features
 
 
-def _build_route_row(feature: dict[str, Any], route_key: str, route_name: str) -> dict[str, Any]:
+def _build_route_row(feature: Dict[str, Any], route_key: str, route_name: str) -> Dict[str, Any]:
     summary = feature["properties"]["summary"]
     distance_km = round(summary["distance"] / 1000, 1)
     time_min = round(summary["duration"] / 60)
@@ -151,9 +151,9 @@ def _build_route_row(feature: dict[str, Any], route_key: str, route_name: str) -
     }
 
 
-def _dedupe_routes(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    unique_routes: list[dict[str, Any]] = []
-    seen_signatures: set[tuple[float, float]] = set()
+def _dedupe_routes(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    unique_routes: List[Dict[str, Any]] = []
+    seen_signatures: Set[Tuple[float, float]] = set()
 
     for route in routes:
         signature = (route["distance_km"], route["time_min"])
@@ -166,7 +166,7 @@ def _dedupe_routes(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def get_route_options(start_lat: float, start_lon: float, end_lat: float, end_lon: float) -> pd.DataFrame:
-    candidate_routes: list[dict[str, Any]] = []
+    candidate_routes: List[Dict[str, Any]] = []
 
     primary_payload = _route_payload(
         start_lat,
