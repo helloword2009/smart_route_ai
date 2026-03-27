@@ -4,16 +4,8 @@ import streamlit as st
 
 from config.settings import APP_TITLE, APP_TAGLINE
 from styles import get_css
-from utils.route_logic import simulate_routes, get_best_routes
 from utils.ui_helpers import route_card, section_title
-from utils.map_logic import (
-    load_places,
-    get_place_coords,
-    build_route_variants,
-    build_fallback_variants,
-)
-
-
+from utils.map_logic import load_places, get_place_coords, get_real_route_from_ors
 
 st.set_page_config(
     page_title=APP_TITLE,
@@ -21,12 +13,15 @@ st.set_page_config(
     layout="wide"
 )
 
-# โหลด style แยกไฟล์
 st.markdown(get_css(), unsafe_allow_html=True)
 
 # session
 if "routes_df" not in st.session_state:
     st.session_state.routes_df = None
+if "last_origin" not in st.session_state:
+    st.session_state.last_origin = None
+if "last_destination" not in st.session_state:
+    st.session_state.last_destination = None
 
 places_df = load_places()
 place_names = places_df["name"].tolist()
@@ -42,7 +37,7 @@ st.markdown(f"""
 # INPUT
 section_title("เลือกการเดินทาง")
 
-col1, col2, col3 = st.columns([1.3, 1.3, 0.8])
+col1, col2, col3 = st.columns([1.4, 1.4, 0.8], vertical_alignment="bottom")
 
 with col1:
     origin = st.selectbox("ต้นทาง", place_names, index=0)
@@ -51,15 +46,38 @@ with col2:
     destination = st.selectbox("ปลายทาง", place_names, index=1)
 
 with col3:
-    st.write("")
-    st.write("")
     calculate = st.button("คำนวณ", use_container_width=True)
 
-# คำนวณ route
+# CALCULATE
 if calculate and origin == destination:
     st.warning("กรุณาเลือกต้นทางและปลายทางให้ต่างกัน")
-if calculate and origin and destination and origin != destination:
-    st.session_state.routes_df = simulate_routes(origin, destination)
+
+elif calculate and origin and destination and origin != destination:
+    try:
+        start_lat, start_lon = get_place_coords(places_df, origin)
+        end_lat, end_lon = get_place_coords(places_df, destination)
+
+        real_route = get_real_route_from_ors(start_lat, start_lon, end_lat, end_lon)
+
+        route_rows = [
+            {
+                "route_key": "balanced",
+                "route_name": "🟠 แนะนำที่สุด",
+                "distance_km": real_route["distance_km"],
+                "time_min": real_route["time_min"],
+                "fuel_cost_baht": round(real_route["distance_km"] * 2.2),
+                "traffic_status": "สมดุล",
+                "path": real_route["path"],
+            }
+        ]
+
+        st.session_state.routes_df = pd.DataFrame(route_rows)
+        st.session_state.last_origin = origin
+        st.session_state.last_destination = destination
+
+    except Exception as e:
+        st.session_state.routes_df = None
+        st.error(f"เกิดข้อผิดพลาดจาก API: {e}")
 
 # RESULT
 section_title("เส้นทางแนะนำ")
@@ -68,8 +86,7 @@ if st.session_state.routes_df is None:
     st.warning("กรอกต้นทางและปลายทาง แล้วกดคำนวณ")
 else:
     df = st.session_state.routes_df
-    best_routes = get_best_routes(df)
-    recommended = best_routes["balanced"]
+    recommended = df.iloc[0]
 
     result_html = f"""
     <div class="main-result">
@@ -88,50 +105,30 @@ else:
     st.markdown(result_html, unsafe_allow_html=True)
 
 # ROUTE OPTIONS
-section_title("ตัวเลือกเส้นทาง")
+section_title("รายละเอียดเส้นทาง")
 
 if st.session_state.routes_df is not None:
-    fastest = best_routes["fastest"]
-    cheapest = best_routes["cheapest"]
-    balanced = best_routes["balanced"]
+    recommended = st.session_state.routes_df.iloc[0]
 
-    c1, c2, c3 = st.columns(3)
+    route_card(
+        "แนะนำที่สุด",
+        recommended["time_min"],
+        recommended["distance_km"],
+        recommended["fuel_cost_baht"],
+        recommended["traffic_status"]
+    )
 
-    with c1:
-        route_card(
-            
-            "เร็วที่สุด",
-            fastest["time_min"],
-            fastest["distance_km"],
-            fastest["fuel_cost_baht"],
-            fastest["traffic_status"]
-        )
-
-    with c2:
-        route_card(
-            "ประหยัดที่สุด",
-            cheapest["time_min"],
-            cheapest["distance_km"],
-            cheapest["fuel_cost_baht"],
-            cheapest["traffic_status"]
-        )
-
-    with c3:
-        route_card(
-            "แนะนำที่สุด",
-            balanced["time_min"],
-            balanced["distance_km"],
-            balanced["fuel_cost_baht"],
-            balanced["traffic_status"]
-        )
-
+# MAP
 section_title("แผนที่เส้นทาง")
 
 if st.session_state.routes_df is None:
     st.warning("เลือกต้นทางและปลายทาง แล้วกดคำนวณเพื่อแสดงแผนที่")
 else:
-    start_lat, start_lon = get_place_coords(places_df, origin)
-    end_lat, end_lon = get_place_coords(places_df, destination)
+    map_origin = st.session_state.last_origin
+    map_destination = st.session_state.last_destination
+
+    start_lat, start_lon = get_place_coords(places_df, map_origin)
+    end_lat, end_lon = get_place_coords(places_df, map_destination)
 
     points_df = pd.DataFrame({
         "name": ["ต้นทาง", "ปลายทาง"],
@@ -139,29 +136,14 @@ else:
         "lon": [start_lon, end_lon],
     })
 
-    route_variants = build_route_variants(origin, destination)
-    if route_variants is None:
-        route_variants = build_fallback_variants(start_lat, start_lon, end_lat, end_lon)
-
-    route_df = pd.DataFrame({
-        "route_name": ["เร็วที่สุด", "ประหยัดที่สุด", "แนะนำที่สุด"],
-        "color": [
-            [59, 130, 246],   # น้ำเงิน
-            [34, 197, 94],    # เขียว
-            [232, 156, 74],   # ส้ม
-        ],
-        "path": [
-            route_variants["fastest"],
-            route_variants["cheapest"],
-            route_variants["balanced"],
-        ]
-    })
+    route_df = st.session_state.routes_df.copy()
+    route_df["color"] = [[232, 156, 74]]
 
     point_layer = pdk.Layer(
         "ScatterplotLayer",
         data=points_df,
         get_position="[lon, lat]",
-        get_radius=45,
+        get_radius=35,
         get_fill_color=[232, 156, 74, 220],
         pickable=True,
     )
@@ -182,7 +164,7 @@ else:
         get_path="path",
         get_color="color",
         width_scale=8,
-        width_min_pixels=4,
+        width_min_pixels=5,
         pickable=True,
     )
 
@@ -202,25 +184,8 @@ else:
 
     st.pydeck_chart(deck, use_container_width=True)
 
-    legend_col1, legend_col2, legend_col3 = st.columns(3)
-
-    with legend_col1:
-        st.markdown("""
-            <div style="font-size:20px; font-weight:700;">
-                🔵 เร็วที่สุด
-                 </div>
-                """, unsafe_allow_html=True)
-
-    with legend_col2:
-        st.markdown("""
-            <div style="font-size:20px; font-weight:700;">
-                    🟢 ประหยัดที่สุด
-                    </div>
-                    """, unsafe_allow_html=True)
-
-    with legend_col3:
-        st.markdown("""
-            <div style="font-size:20px; font-weight:700;">
-            🟠 แนะนำที่สุด
-            </div>
-                """, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="font-size:20px; font-weight:700; margin-top:8px;">
+        🟠 แนะนำที่สุด
+    </div>
+    """, unsafe_allow_html=True)

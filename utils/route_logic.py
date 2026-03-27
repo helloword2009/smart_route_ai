@@ -8,17 +8,17 @@ def simulate_routes(origin: str, destination: str) -> pd.DataFrame:
 
     routes = [
         {
-            "route_name": "เส้นทาง A",
+            "route_name": "🔵 เร็วที่สุด",
             "time_min": base_time,
             "distance_km": base_distance,
         },
         {
-            "route_name": "เส้นทาง B",
+            "route_name": "🟢 ประหยัดที่สุด",
             "time_min": base_time - random.randint(1, 3),
             "distance_km": base_distance + random.uniform(0.5, 1.5),
         },
         {
-            "route_name": "เส้นทาง C",
+            "route_name": "🟠 แนะนำที่สุด",
             "time_min": base_time + random.randint(1, 3),
             "distance_km": base_distance - random.uniform(0.5, 1.5),
         },
@@ -36,9 +36,9 @@ def simulate_routes(origin: str, destination: str) -> pd.DataFrame:
 
 
 def get_best_routes(df: pd.DataFrame) -> dict:
-    fastest = df.loc[df["time_min"].idxmin()]
-    cheapest = df.loc[df["fuel_cost_baht"].idxmin()]
-    balanced = df.loc[(df["time_min"] + df["fuel_cost_baht"]).idxmin()]
+    fastest = df[df["route_key"] == "fastest"].iloc[0]
+    cheapest = df[df["route_key"] == "cheapest"].iloc[0]
+    balanced = df[df["route_key"] == "balanced"].iloc[0]
 
     return {
         "fastest": fastest,

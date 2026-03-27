@@ -1,4 +1,41 @@
+import math
 import pandas as pd
+import requests
+import streamlit as st
+
+
+def get_real_route_from_ors(start_lat, start_lon, end_lat, end_lon):
+    api_key = st.secrets["ORS_API_KEY"]
+
+    url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
+
+    headers = {
+        "Authorization": api_key,
+        "Content-Type": "application/json",
+    }
+
+    body = {
+        "coordinates": [
+            [start_lon, start_lat],
+            [end_lon, end_lat]
+        ]
+    }
+
+    response = requests.post(url, json=body, headers=headers, timeout=20)
+
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    data = response.json()
+
+    coords = data["features"][0]["geometry"]["coordinates"]
+    summary = data["features"][0]["properties"]["summary"]
+
+    return {
+        "path": coords,
+        "distance_km": round(summary["distance"] / 1000, 1),
+        "time_min": round(summary["duration"] / 60),
+    }
 
 
 def load_places() -> pd.DataFrame:
@@ -10,6 +47,7 @@ def get_place_coords(df: pd.DataFrame, place_name: str):
     return row["lat"], row["lon"]
 
 
+# เก็บไว้ก่อน เผื่อต้องใช้ route mock สำรอง
 def build_route_variants(origin: str, destination: str):
     routes = {
         ("โรงเรียนสตรีนครสวรรค์", "เซ็นทรัลนครสวรรค์"): {
@@ -38,7 +76,6 @@ def build_route_variants(origin: str, destination: str):
                 [100.1224, 15.6985],
             ],
         },
-
         ("เซ็นทรัลนครสวรรค์", "โรงเรียนสตรีนครสวรรค์"): {
             "fastest": [
                 [100.1224, 15.6985],
@@ -67,28 +104,22 @@ def build_route_variants(origin: str, destination: str):
         },
     }
 
-    key = (origin, destination)
-    return routes.get(key, None)
+    return routes.get((origin, destination), None)
 
 
 def build_fallback_variants(start_lat, start_lon, end_lat, end_lon):
-    # route เร็วที่สุด
     fastest = [
         [start_lon, start_lat],
         [(start_lon * 2 + end_lon) / 3, (start_lat * 2 + end_lat) / 3 + 0.002],
         [(start_lon + end_lon * 2) / 3, (start_lat + end_lat * 2) / 3 + 0.001],
         [end_lon, end_lat],
     ]
-
-    # route ประหยัดที่สุด
     cheapest = [
         [start_lon, start_lat],
         [(start_lon * 2 + end_lon) / 3 - 0.002, (start_lat * 2 + end_lat) / 3 - 0.001],
         [(start_lon + end_lon * 2) / 3 - 0.001, (start_lat + end_lat * 2) / 3 - 0.002],
         [end_lon, end_lat],
     ]
-
-    # route แนะนำที่สุด
     balanced = [
         [start_lon, start_lat],
         [(start_lon * 2 + end_lon) / 3, (start_lat * 2 + end_lat) / 3 + 0.001],
@@ -101,3 +132,61 @@ def build_fallback_variants(start_lat, start_lon, end_lat, end_lon):
         "cheapest": cheapest,
         "balanced": balanced,
     }
+
+
+def calculate_path_distance_km(path):
+    total = 0.0
+    for i in range(len(path) - 1):
+        lon1, lat1 = path[i]
+        lon2, lat2 = path[i + 1]
+        dx = (lon2 - lon1) * 111 * math.cos(math.radians((lat1 + lat2) / 2))
+        dy = (lat2 - lat1) * 111
+        total += math.sqrt(dx**2 + dy**2)
+    return round(total, 1)
+
+
+def build_route_metrics_from_variants(route_variants):
+    speed_profiles = {
+        "fastest": 42,
+        "cheapest": 30,
+        "balanced": 36,
+    }
+
+    fuel_rate_profiles = {
+        "fastest": 2.4,
+        "cheapest": 2.0,
+        "balanced": 2.2,
+    }
+
+    traffic_profiles = {
+        "fastest": "ปานกลาง",
+        "cheapest": "จราจรดี",
+        "balanced": "สมดุล",
+    }
+
+    route_names = {
+        "fastest": "🔵 เร็วที่สุด",
+        "cheapest": "🟢 ประหยัดที่สุด",
+        "balanced": "🟠 แนะนำที่สุด",
+    }
+
+    rows = []
+
+    for key in ["fastest", "cheapest", "balanced"]:
+        path = route_variants[key]
+        distance_km = calculate_path_distance_km(path)
+        avg_speed = speed_profiles[key]
+        time_min = round((distance_km / avg_speed) * 60)
+        fuel_cost_baht = round(distance_km * fuel_rate_profiles[key])
+
+        rows.append({
+            "route_key": key,
+            "route_name": route_names[key],
+            "time_min": time_min,
+            "distance_km": distance_km,
+            "fuel_cost_baht": fuel_cost_baht,
+            "traffic_status": traffic_profiles[key],
+            "path": path,
+        })
+
+    return rows
