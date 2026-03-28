@@ -231,5 +231,11 @@ def get_css() -> str:
         color: #FFFFFF;
         word-break: break-word;
     }
+
+    div[data-testid="stAlertContainer"] p,
+    div[data-testid="stAlertContainer"] span,
+    div[data-testid="stAlertContainer"] div {
+        color: #FFFFFF !important;
+    }
     </style>
     """
