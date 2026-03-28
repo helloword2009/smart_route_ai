@@ -13,8 +13,7 @@ ROUTE_COLORS = {
     "fastest": [60, 120, 216],
     "cheapest": [90, 150, 214],
 }
-REFERENCE_POINT_COLOR = [13, 59, 102, 120]
-REFERENCE_TEXT_COLOR = [30, 65, 107]
+REFERENCE_POINT_COLOR = [150, 111, 81, 170]
 ROUTE_OUTLINE_COLOR = [255, 248, 225, 210]
 DEFAULT_MAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 
@@ -35,7 +34,9 @@ def route_zoom_level(distance_km: float) -> float:
     return 14.8
 
 
-def nearby_reference_places(places_df: pd.DataFrame, origin: str, destination: str, route_path: list) -> pd.DataFrame:
+def nearby_reference_places(
+    places_df: pd.DataFrame, origin: str, destination: str, route_path: list
+) -> pd.DataFrame:
     reference_df = places_df[~places_df["name"].isin([origin, destination])].copy()
     if reference_df.empty:
         return reference_df
@@ -64,7 +65,6 @@ def nearby_reference_places(places_df: pd.DataFrame, origin: str, destination: s
     filtered_df["point_type"] = "จุดอ้างอิงในนครสวรรค์"
     filtered_df["title"] = filtered_df["point_type"]
     filtered_df["detail"] = filtered_df["name"]
-    filtered_df["label_size"] = filtered_df["distance_score"].apply(lambda value: 13 if value < 0.01 else 12)
 
     return filtered_df
 
@@ -164,7 +164,7 @@ else:
             ⛽ {selected_route['fuel_cost_baht']:.0f} บาท
         </div>
         <div class="small-note">
-            แผนที่จะซูมอัตโนมัติตามระยะทางและแสดงจุดอ้างอิงที่อยู่ใกล้เส้นทางในนครสวรรค์ให้มากที่สุดเท่าที่ข้อมูลตอนนี้มี
+            แผนที่จะซูมอัตโนมัติตามระยะทางและแสดงจุดอ้างอิงที่อยู่ใกล้เส้นทางในนครสวรรค์
         </div>
     </div>
     """
@@ -210,6 +210,15 @@ else:
         axis=1,
     )
 
+    reference_points_df = nearby_reference_places(
+        places_df,
+        map_origin,
+        map_destination,
+        selected_route["path"],
+    )
+    reference_points_df["title"] = "จุดอ้างอิง"
+    reference_points_df["detail"] = reference_points_df["name"]
+
     route_df = pd.DataFrame([selected_route.to_dict()])
     route_df["color"] = [ROUTE_COLORS.get(selected_route["route_key"], [232, 156, 74])]
     route_df["outline_color"] = [ROUTE_OUTLINE_COLOR]
@@ -240,6 +249,15 @@ else:
         rounded=True,
     )
 
+    reference_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=reference_points_df,
+        get_position="[lon, lat]",
+        get_radius=14,
+        get_fill_color=REFERENCE_POINT_COLOR,
+        pickable=True,
+    )
+
     point_layer = pdk.Layer(
         "ScatterplotLayer",
         data=points_df,
@@ -262,6 +280,7 @@ else:
         layers=[
             route_outline_layer,
             line_layer,
+            reference_layer,
             point_layer,
         ],
         tooltip={
@@ -276,4 +295,3 @@ else:
         },
     )
     st.pydeck_chart(deck, use_container_width=True)
-
