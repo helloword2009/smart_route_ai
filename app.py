@@ -1,5 +1,3 @@
-import math
-
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
@@ -11,13 +9,13 @@ from utils.ui_helpers import route_card, section_title
 
 
 ROUTE_COLORS = {
-    "balanced": [232, 156, 74],
-    "fastest": [74, 144, 226],
-    "cheapest": [61, 168, 111],
+    "balanced": [244, 211, 94],
+    "fastest": [60, 120, 216],
+    "cheapest": [90, 150, 214],
 }
-REFERENCE_POINT_COLOR = [139, 94, 60, 120]
-REFERENCE_TEXT_COLOR = [92, 74, 61]
-ROUTE_OUTLINE_COLOR = [255, 255, 255, 210]
+REFERENCE_POINT_COLOR = [13, 59, 102, 120]
+REFERENCE_TEXT_COLOR = [30, 65, 107]
+ROUTE_OUTLINE_COLOR = [255, 248, 225, 210]
 DEFAULT_MAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 
 
@@ -220,41 +218,13 @@ else:
         f"{selected_route['time_min']:.0f} นาที | {selected_route['distance_km']:.1f} กม. | {selected_route['fuel_cost_baht']:.0f} บาท"
     ]
 
-    reference_places_df = nearby_reference_places(
-        places_df,
-        map_origin,
-        map_destination,
-        selected_route["path"],
-    )
-
-    reference_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=reference_places_df,
-        get_position="[lon, lat]",
-        get_radius=9,
-        get_fill_color=REFERENCE_POINT_COLOR,
-        pickable=True,
-    )
-
-    reference_text_layer = pdk.Layer(
-        "TextLayer",
-        data=reference_places_df,
-        get_position="[lon, lat]",
-        get_text="name",
-        get_size="label_size",
-        get_color=REFERENCE_TEXT_COLOR,
-        get_alignment_baseline="'top'",
-        get_pixel_offset=[0, 10],
-        pickable=False,
-    )
-
     route_outline_layer = pdk.Layer(
         "PathLayer",
         data=route_df,
         get_path="path",
         get_color="outline_color",
-        width_scale=10,
-        width_min_pixels=10,
+        width_scale=7,
+        width_min_pixels=6,
         pickable=False,
         rounded=True,
     )
@@ -264,8 +234,8 @@ else:
         data=route_df,
         get_path="path",
         get_color="color",
-        width_scale=8,
-        width_min_pixels=6,
+        width_scale=5,
+        width_min_pixels=3,
         pickable=True,
         rounded=True,
     )
@@ -279,18 +249,6 @@ else:
         pickable=True,
     )
 
-    text_layer = pdk.Layer(
-        "TextLayer",
-        data=points_df,
-        get_position="[lon, lat]",
-        get_text="name",
-        get_size=15,
-        get_color=[43, 43, 43],
-        get_alignment_baseline="'bottom'",
-        get_pixel_offset=[0, -18],
-        pickable=False,
-    )
-
     view_state = pdk.ViewState(
         latitude=(start_lat + end_lat) / 2,
         longitude=(start_lon + end_lon) / 2,
@@ -302,24 +260,20 @@ else:
         map_style=DEFAULT_MAP_STYLE,
         initial_view_state=view_state,
         layers=[
-            reference_layer,
-            reference_text_layer,
             route_outline_layer,
             line_layer,
             point_layer,
-            text_layer,
         ],
         tooltip={
             "html": "<b>{title}</b><br/>{detail}",
             "style": {
-                "backgroundColor": "#2B2B2B",
-                "color": "#FFFFFF",
+                "backgroundColor": "#0D3B66",
+                "color": "#FFF8E1",
                 "fontSize": "14px",
                 "padding": "8px 10px",
                 "borderRadius": "8px",
             },
         },
     )
-
     st.pydeck_chart(deck, use_container_width=True)
-    
+

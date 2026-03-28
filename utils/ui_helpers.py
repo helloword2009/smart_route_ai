@@ -5,15 +5,16 @@ import streamlit.components.v1 as components
 def section_title(title: str) -> None:
     html = f"""
     <div style="
-        background: rgba(255, 249, 243, 0.92);
+        background: rgba(223, 236, 252, 0.96);
         padding: 12px 16px;
         border-radius: 16px;
-        border: 1px solid rgba(139, 94, 60, 0.14);
+        border: 1px solid rgba(157, 188, 224, 0.38);
         margin-bottom: 12px;
+        box-shadow: 0 8px 18px rgba(7, 28, 48, 0.12);
     ">
         <h3 style="
             margin:0;
-            color:#2B2B2B;
+            color:#0D3B66;
             font-size:18px;
             font-weight:700;
             letter-spacing:-0.01em;
@@ -32,17 +33,17 @@ def route_card(title: str, time_min: float, distance_km: float, fuel_cost: float
 
     html = f"""
     <div style="
-        background: rgba(255, 249, 243, 0.97);
+        background: rgba(223, 236, 252, 0.97);
         padding: 20px;
         border-radius: 18px;
-        box-shadow: 0 10px 28px rgba(76, 48, 25, 0.08);
+        box-shadow: 0 10px 28px rgba(7, 28, 48, 0.14);
         margin-bottom: 12px;
-        border: 1px solid rgba(139, 94, 60, 0.14);
+        border: 1px solid rgba(157, 188, 224, 0.36);
     ">
         <div style="
             font-size: 18px;
             font-weight: 700;
-            color: #8B5E3C;
+            color: #0D3B66;
             margin-bottom: 14px;
         ">
             {title}
@@ -52,7 +53,7 @@ def route_card(title: str, time_min: float, distance_km: float, fuel_cost: float
             display: grid;
             gap: 10px;
             font-size: 15px;
-            color: #2B2B2B;
+            color: #102A43;
             line-height: 1.6;
         ">
             <div>\u0e40\u0e27\u0e25\u0e32\u0e40\u0e14\u0e34\u0e19\u0e17\u0e32\u0e07 <strong>{time_min:.0f} \u0e19\u0e32\u0e17\u0e35</strong></div>
